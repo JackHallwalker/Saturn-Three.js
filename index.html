@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="./three.js"></script>
+    <script src="./OrbitControls.js"></script>
+    <script src="./GLTFLoader.js"></script>
+    <title>Saturn-three.js</title>
+</head>
+<body>
+    <script>
+        
+        //creating a scene
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 10000 );
+
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize( window.innerWidth, window.innerHeight );
+        renderer.shadowMap.enabled = true;
+        // renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild( renderer.domElement );
+
+        //show axises
+        var axes = new THREE.AxesHelper(100);
+        // scene.add(axes);
+
+        //controls
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+        //add skybox function
+        function loadSkybox(index){
+        var filename = 'assets/skyboxes/skybox' + index.toString();
+
+        let materialArray = [];
+        const loader = new THREE.TextureLoader();
+
+        materialArray.push(new THREE.MeshBasicMaterial({ map: loader.load(filename + '/right.png')}))
+        materialArray.push(new THREE.MeshBasicMaterial({ map: loader.load(filename + '/left.png')}))
+        materialArray.push(new THREE.MeshBasicMaterial({ map: loader.load(filename + '/top.png')}))
+        materialArray.push(new THREE.MeshBasicMaterial({ map: loader.load(filename + '/bottom.png')}))
+        materialArray.push(new THREE.MeshBasicMaterial({ map: loader.load(filename + '/front.png')}))
+        materialArray.push(new THREE.MeshBasicMaterial({ map: loader.load(filename + '/back.png')}))
+
+        for (let i = 0; i < 6; i++){ materialArray[i].side = THREE.BackSide; }
+        let geometry = new THREE.BoxGeometry(5000, 5000, 5000);
+        let skybox = new THREE.Mesh(geometry, materialArray);
+        scene.add(skybox);
+        }
+        //Load skybox
+        loadSkybox(2);
+
+        //Add function for astroid view
+        function otherFloatingObjects(size, after, filepath){
+
+        var vertices = [];
+
+        for (var i = 0; i < 10; i++){
+            var x = THREE.MathUtils.randFloatSpread(2000);
+            var y = THREE.MathUtils.randFloatSpread(2000);
+            var z = THREE.MathUtils.randFloatSpread(2000);
+            var speed = THREE.MathUtils.randFloat(0.5, 2);
+
+            //choose only far asteroids
+            if (!(x<after && x>-after) || !(y<after && y>-after) || !(z<after && z>-after)) vertices.push(x, y, z);
+        }
+
+        var geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        var texture = new THREE.TextureLoader().load(filepath);
+        var material = new THREE.PointsMaterial({size: size, map: texture, transparent: true});
+        var asteroids = new THREE.Points(geometry, material);
+        asteroids.rotateX(10);
+        scene.add(asteroids);
+
+        function animate() {
+            requestAnimationFrame( animate );
+            asteroids.position.z += speed;
+            renderer.render( scene, camera );
+        };
+
+        animate();
+
+        }
+        //add asteroids to the scene
+        otherFloatingObjects(size=15, after=500, 'assets/asteroid1.png');
+        otherFloatingObjects(size=20, after=500, 'assets/asteroid2.png');
+
+        
+        //Saturn globe Create function
+        function saturnGlobe(Radius, mapFile, bmpMapFile){
+
+        //globe
+        const geometry = new THREE.SphereGeometry( Radius, 128, 64 );
+        var texture = new THREE.TextureLoader().load(mapFile);
+        var bmptexture = new THREE.TextureLoader().load(bmpMapFile);
+        const material = new THREE.MeshStandardMaterial( { map: texture, bumpMap: bmptexture} );
+        const saturn = new THREE.Mesh( geometry, material );
+        saturn.castShadow = true;
+        saturn.receiveShadow = true;
+        scene.add( saturn );
+        
+
+        //animation
+        function animate() {
+            requestAnimationFrame( animate );
+            saturn.rotation.y += 0.002;
+            renderer.render( scene, camera );
+        };
+
+        animate();
+        }
+
+        //Saturn ring create function
+        function saturnRings(startAt, mapFile, bmpMapFile, y){
+
+        //rings
+        const geometry = new THREE.RingGeometry( startAt, startAt + 10, 1280, phiSegments = 300 );
+        var texture = new THREE.TextureLoader().load(mapFile);
+        var bmptexture = new THREE.TextureLoader().load(bmpMapFile);
+        const material = new THREE.MeshStandardMaterial( { map: texture, bumpMap: bmptexture, side: THREE.DoubleSide, transparent: true } );
+        const rings = new THREE.Mesh( geometry, material );
+        rings.rotation.x = -1.4;
+        rings.rotation.y = 0.1;
+        rings.position.y = y;
+        // rings.castShadow = true;
+        rings.receiveShadow = true;
+        scene.add(rings);
+
+        function animate() {
+            requestAnimationFrame( animate );
+            rings.rotation.z += 0.002;
+            renderer.render( scene, camera );
+        };
+
+        animate();
+        }
+
+        //moons create function
+        function createMoons(endAt, mapFile, bmpMapFile){
+
+        var texture = new THREE.TextureLoader().load(mapFile);
+        // var bmptexture = new THREE.TextureLoader().load(bmpMapFile);
+        const material = new THREE.MeshPhongMaterial( { map: texture} );
+
+        //for titan
+        const titanmaterial = new THREE.MeshPhongMaterial( { map: texture, color:0xffa500} );
+        Moon([endAt/2, 0, endAt/2], 0.8, 0.01, 0.004, titanmaterial, true);
+
+        //for other random 10 moons
+        for (var i = 0; i < 10; i++){
+            var x = THREE.MathUtils.randFloatSpread(endAt);
+            var y = THREE.MathUtils.randFloatSpread(15);
+            var z = THREE.MathUtils.randFloatSpread(endAt);
+            var pos = [x, y, z];
+            var size = THREE.MathUtils.randFloat(0.1, 0.5);
+            var rotation = THREE.MathUtils.randFloat(0.001, 0.1);
+            var orbit = THREE.MathUtils.randFloat(0.0005, 0.001);
+            Moon(pos, size, rotation, orbit, material)
+        }
+
+        }
+
+        function Moon(pos, size, rotationSpeed, orbitSpeed, material, shadowCast=false){
+
+        var geometry = new THREE.SphereGeometry( size, 32, 16 );
+        var moon = new THREE.Mesh( geometry, material );
+        var moonObj = new THREE.Object3D();
+        moonObj.add(moon);
+        scene.add(moonObj);
+
+        moon.position.x = pos[0];
+        moon.position.y = pos[1];
+        moon.position.z = pos[2];
+
+        moon.receiveShadow = true;
+        moon.castShadow = shadowCast;
+            
+        function animate() {
+            requestAnimationFrame( animate );
+            moon.rotateY(rotationSpeed);
+            moonObj.rotateY(orbitSpeed);
+            renderer.render( scene, camera );
+        };
+
+        animate()
+        }
+
+        //add saturn to the scene
+        saturnGlobe(Radius=15, 'assets/saturn2.jpg', 'assets/saturn2 - grayScale.jpg');
+        saturnRings(startAt=30, 'assets/ring2.png', 'assets/ring2 - grayScale.png', 0);
+        // saturnRings(startAt=20, 'assets/ring2.png', 'assets/ring2 - grayScale.png', 0.1); 
+        createMoons(endAt=50, 'assets/moon.jpg', 'assets/moon - grayScale.jpg'); // only titan moon will cast shadows
+
+        //Space station function
+        function spaceStation(){
+        var loader = new THREE.GLTFLoader();
+        loader.load('assets/space_station/scene.gltf', function(gltf){
+            scene.add(gltf.scene);
+            gltf.scene.position.set(10, 0, 20);
+            gltf.scene.scale.set(0.5, 0.5 , 0.5);
+            gltf.scene.castSahdow = true;
+        }, undefined, function(error){
+            console.log(error);
+        });
+        }
+        //run space station
+        spaceStation();
+
+        //Sun create function
+        function sun(Radius, mapFile, bmpMapFile){
+            //globe
+            const geometry = new THREE.SphereGeometry( Radius, 128, 64 );
+            var texture = new THREE.TextureLoader().load(mapFile);
+            var bmptexture = new THREE.TextureLoader().load(bmpMapFile);
+            const material = new THREE.MeshBasicMaterial( { map: texture, bumpMap: bmptexture} );
+            const sun = new THREE.Mesh( geometry, material );
+
+            sun.position.set(1500, 0, 100 );
+            scene.add( sun );
+            sunAsSpotLight();
+            // sunAsPointLight();
+        }
+
+        //spotlight function
+        function sunAsSpotLight(){
+            const spotLight = new THREE.SpotLight( 0xffffff );
+            spotLight.position.set( 1500, 0, 100 );
+
+            spotLight.castShadow = true;
+
+            spotLight.shadow.mapSize.width = 1024;
+            spotLight.shadow.mapSize.height = 1024;
+
+            spotLight.shadow.camera.near = 0.1;
+            spotLight.shadow.camera.far = 3000;
+            spotLight.shadow.camera.fov = 30;
+
+            scene.add( spotLight );
+
+            const helper = new THREE.CameraHelper( spotLight.shadow.camera );
+            // scene.add( helper );
+        }
+
+
+        function sunAsPointLight(){
+            const light = new THREE.PointLight( 0xffffff, 1, 100 );
+            light.position.set( 1000, 10, 100 );
+            scene.add( light );
+        }
+        
+        //sun
+        sun(Radius=70, 'assets/sun.jpg');
+
+        camera.position.z = 50;
+        camera.position.x = 50;
+        camera.lookAt(0, 0, 0);
+
+        //window resize resposiveness
+        window.addEventListener('resize', function(){
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight)
+        })
+
+    </script>
+</body>
+</html>
