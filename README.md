@@ -1,3 +1,3 @@
 # Saturn-Three.js
 
-Firs Three.js project
+First Three.js project
